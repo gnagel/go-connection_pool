@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Abort on errors after this point ...
+set -e
+
+# Format the code
+gofmt -s -w ./connection_pool/*
+
+# Run the tests
+go test ./connection_pool/*
+

@@ -1,4 +1,6 @@
-package redis_pool
+package redis_connection_pool
+
+import "github.com/alecthomas/log4go"
 
 //
 // Helper to iterate urls
@@ -15,9 +17,9 @@ func loopStrings(values []string) func() string {
 //
 // Lazily make a Redis Connection
 //
-func makeLazyConnection(url string, Logger *log4go.Logger) *RedisConnection {
+func makeLazyConnection(url string, Logger *log4go.Logger) (*RedisConnection, error) {
 	// Create a new factory instance
-	p := &RedisConnection{Url: nextUrl(), p.Logger}
+	p := &RedisConnection{Url: url, Logger: Logger}
 
 	// Return the factory
 	return p, nil

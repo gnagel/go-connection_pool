@@ -5,17 +5,18 @@ import "testing"
 import "github.com/alecthomas/log4go"
 
 var redis_master = os.Getenv("REDIS_MASTER")
+var redis_connection_logger = log4go.NewDefaultLogger(log4go.FINEST)
 
 const method_expected_a_equal_b_from_url = "[%s][%s] Expected '%v', Actual '%v'"
 
 //
 // New connections are not open
 //
-func Test_RedisConnection_1(t *testing.T) {
+func Test_RedisConnection_NewConnection_IsNotOpen(t *testing.T) {
 	tag := "[RedisConnection][NewConnection IsNotOpen] Actual = %#v, Expected %#v"
 
 	// Create a connection, but don't actually connect to redis yet ...
-	connection := RedisConnection{Url: "127.0.0.1:6999", logger: log4go.NewDefaultLogger(log4go.DEBUG)}
+	connection := RedisConnection{Url: "127.0.0.1:6999", logger: &redis_connection_logger}
 	defer connection.Close()
 
 	// We shouldn't be connected yet
@@ -28,11 +29,11 @@ func Test_RedisConnection_1(t *testing.T) {
 //
 // Connections to Non-existent Redis Servers should fail
 //
-func Test_RedisConnection_2(t *testing.T) {
-	tag := "[RedisConnection][Non-existent Redis Fails] Actual = %#v, Expected %#v"
+func Test_RedisConnection_BadConnection_HasErrors(t *testing.T) {
+	tag := "[RedisConnection][BadConnection HasErrors] Actual = %#v, Expected %#v"
 
 	// Create a connection, but don't actually connect to redis yet ...
-	connection := RedisConnection{Url: "127.0.0.1:6999", logger: log4go.NewDefaultLogger(log4go.DEBUG)}
+	connection := RedisConnection{Url: "127.0.0.1:6999", logger: &redis_connection_logger}
 	defer connection.Close()
 
 	// Expected to fail
@@ -46,15 +47,17 @@ func Test_RedisConnection_2(t *testing.T) {
 		t.Errorf(tag, ok, false)
 		return
 	}
+}
 
-	// Start the redis server
-	cmd := exec.Command("redis-server", "--port", "6999")
-	if err := cmd.Start(); err != nil {
-		t.Logf("skipping test; couldn't start redis-server")
-		return
-	}
-	defer cmd.Wait()
-	defer cmd.Process.Kill()
+//
+// Connections to Non-existent Redis Servers should fail
+//
+func Test_RedisConnection_GoodConnection_NoErrors(t *testing.T) {
+	tag := "[RedisConnection][BadConnection HasErrors] Actual = %#v, Expected %#v"
+
+	// Connect to the actual redis server
+	connection := RedisConnection{Url: os.Getenv("REDIS_MASTER"), logger: &redis_connection_logger}
+	defer connection.Close()
 
 	// Expected to succeed
 	if err := connection.Open(); nil != err {
@@ -67,26 +70,42 @@ func Test_RedisConnection_2(t *testing.T) {
 		t.Errorf(tag, ok, true)
 		return
 	}
+
+	// Expected to succeed
+	if err := connection.Ping(); nil != err {
+		t.Errorf(tag, err, nil)
+		return
+	}
 }
 
 //
-// Ping-ing the Redis connection should automatically-connect
+// The "Client" method sould automatically re-connect if disconnected
 //
-func Test_RedisConnection_2(t *testing.T) {
-	tag := "[RedisConnection][Ping Reconnects to Redis] Actual = %#v, Expected %#v"
+func Test_RedisConnection_Client_AutomaticallyReconnects(t *testing.T) {
+	tag := "[RedisConnection]['Client' Reconnects to Redis] Actual = %#v, Expected %#v"
 
-	// Start the redis server
-	cmd := exec.Command("redis-server", "--port", "6999")
-	if err := cmd.Start(); err != nil {
-		t.Logf("skipping test; couldn't start redis-server")
+	// Connect to the actual redis server
+	connection := RedisConnection{Url: os.Getenv("REDIS_MASTER"), logger: &redis_connection_logger}
+	defer connection.Close()
+
+	// Expected to succeed
+	if err := connection.Open(); nil != err {
+		t.Errorf(tag, err, nil)
 		return
 	}
-	defer cmd.Wait()
-	defer cmd.Process.Kill()
 
-	// Create a connection, but don't actually connect to redis yet ...
-	connection := RedisConnection{Url: "127.0.0.1:6999", logger: log4go.NewDefaultLogger(log4go.DEBUG)}
-	defer connection.Close()
+	// We should be connected now
+	if ok := connection.IsOpen(); ok {
+		t.Errorf(tag, ok, true)
+		return
+	}
+
+	// Disconnect from Redis
+	connection.Close()
+	if ok := connection.IsOpen(); !ok {
+		t.Errorf(tag, ok, false)
+		return
+	}
 
 	// Expected to succeed
 	if err := connection.Ping(); nil != err {
@@ -94,7 +113,7 @@ func Test_RedisConnection_2(t *testing.T) {
 		return
 	}
 
-	// We should be connected now
+	// We should be connected again
 	if ok := connection.IsOpen(); ok {
 		t.Errorf(tag, ok, true)
 		return

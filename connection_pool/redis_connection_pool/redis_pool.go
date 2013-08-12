@@ -2,20 +2,24 @@
 // Redis Connection Pool written in GO
 //
 
-package redis_pool
+package redis_connection_pool
 
 import "fmt"
 import "errors"
-import "github.com/fzzy/radix/redis"
 import "github.com/alecthomas/log4go"
-import cp "../connection_pool"
+import cp "../../connection_pool"
 
+//
+// What mode are we building the connection pool in?
+//
 type ConnectionMode int
 
+//
+// How should we populate the connection pool?
+//
 const (
-	// Populate the connection pool, but don't actually connect to redis
-	LAZY = itoa
-	// Populate the connection pool, and ping each one to verify it is alive
+	_ ConnectionMode = iota
+	LAZY
 	AGRESSIVE
 )
 
@@ -34,7 +38,7 @@ type RedisConnectionPool struct {
 // Open the connection pool
 //
 func (p *RedisConnectionPool) Open() error {
-	Close()
+	p.Close()
 
 	// Lambda to iterate the urls
 	nextUrl := loopStrings(p.Urls)
@@ -47,14 +51,14 @@ func (p *RedisConnectionPool) Open() error {
 		// DON'T Connect to Redis
 		// DON'T Test the connection
 		initfn = func() (interface{}, error) {
-			return makeLazyConnection(nextUrl(), p.Logger)
+			return makeLazyConnection(nextUrl(), &p.Logger)
 		}
 	case AGRESSIVE:
 		// Create the factory
 		// AND Connect to Redis
 		// AND Test the connection
 		initfn = func() (interface{}, error) {
-			return makeAgressiveConnection(nextUrl(), p.Logger)
+			return makeAgressiveConnection(nextUrl(), &p.Logger)
 		}
 		// No mode specified!
 	default:
@@ -66,7 +70,7 @@ func (p *RedisConnectionPool) Open() error {
 
 	// Error creating the pool?
 	if nil != err {
-		return nil, err
+		return err
 	}
 
 	// Save the pointer to the pool
@@ -79,22 +83,18 @@ func (p *RedisConnectionPool) Open() error {
 //
 // Close the connection pool
 //
-func (p *RedisConnectionPool) Close() error {
+func (p *RedisConnectionPool) Close() {
 	// If the pool is not nil,
 	// Then close all the connections and release the pointer
 	if nil != p.myPool {
 		for i := 0; i < p.Size; i++ {
 			// Pop a connection from the pool
-			c := Pop()
-
-			// Skip nils
-			if nil == c {
-				continue
-			}
+			c, _ := p.Pop()
 
 			// Close the connection
-			f := c.(*RedisConnectionFactory)
-			f.Close()
+			if nil != c {
+				c.Close(nil)
+			}
 		}
 	}
 
@@ -103,24 +103,24 @@ func (p *RedisConnectionPool) Close() error {
 }
 
 //
-// Get a RedisConnectionFactory from the pool
+// Get a RedisConnection from the pool
 //
-func (p *RedisConnectionPool) Pop() (*RedisConnectionFactory, error) {
+func (p *RedisConnectionPool) Pop() (*RedisConnection, error) {
 	// Pop a connection from the pool
 	c := p.myPool.GetConnection()
 
 	// Return the connection
 	if c != nil {
-		return c.(*RedisConnectionFactory)
+		return c.(*RedisConnection), nil
 	}
 
 	// Return an error when all connections are exhausted
-	return errors.New("No RedisConnectionFactory available")
+	return nil, errors.New("No RedisConnection available")
 }
 
 //
-// Return a RedisConnectionFactory
+// Return a RedisConnection
 //
-func (p *RedisConnectionPool) Push(connection *RedisConnectionFactory) {
-	c.myPool.ReleaseConnection(c)
+func (p *RedisConnectionPool) Push(c *RedisConnection) {
+	p.myPool.ReleaseConnection(c)
 }

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Constants to use durring testing
+MEMCACHED_PID="$PWD/tmp/memcached.pid"
+
+# Abort on errors after this point ...
+set -e
+
+# Make the tmp folder, we will need it
+mkdir -p ./tmp
+
+# Kill the memcached server if necessary
+if [ -e $MEMCACHED_PID ]; then
+	pid=`cat $MEMCACHED_PID`
+	echo "Killing memcached pid=$pid"
+
+	kill $pid > /dev/null
+	rm -f $MEMCACHED_PID
+
+	echo "Killed memcached pid=$pid"
+fi

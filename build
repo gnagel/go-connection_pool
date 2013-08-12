@@ -1,0 +1,22 @@
+#!/bin/sh
+
+export GOPATH=$PWD/
+
+# Abort on errors after this point ...
+set -e
+
+# Cleanout the bin folder
+rm -f ./bin/*
+
+# Make sure the dependencies are setup
+# Import the script into this namespace
+. ./configure
+
+
+echo ""
+echo ".................................................................."
+echo "Formatting the code .............................................."
+echo ".................................................................."
+gofmt -s -w $GOPATH
+echo ""
+

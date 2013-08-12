@@ -1,11 +1,54 @@
 #!/bin/sh
 
+export GOPATH=$PWD/
+export GOMAXPROCS=1
+
+# Constants to use durring testing
+export REDIS_MASTER="127.0.0.1:6399"
+export MEMCACHED_MASTER="127.0.0.1:11299"
+
 # Abort on errors after this point ...
 set -e
 
-# Format the code
-gofmt -s -w ./connection_pool/*
+# Make the tmp folder, we will need it
+mkdir -p ./tmp ./logs
+rm -f ./tmp/*.log
+
+# Make sure the app builds
+./build || exit $?
 
 # Run the tests
-go test ./...
+# This will run the "all_spec_test.go" suite of tests
+echo ""
+echo ".................................................................."
+echo "Running tests ...................................................."
+echo ".................................................................."
+echo ""
 
+
+# Start the redis server
+./scripts/test_redis_start >> ./tmp/redis.log 2>&1 &
+
+# Start the memcached server
+./scripts/test_memcached_start >> ./tmp/memcached.log 2>&1 &
+
+sleep 5 # Slight delay before blasting redis ...
+
+
+# 
+# Run the tests
+# 
+go test -v ./connection_pool/...
+
+
+# Kill the redis server
+./scripts/test_redis_stop >> ./tmp/redis.log 2>&1 || true
+
+# Kill the memcached server
+./scripts/test_memcached_stop >> ./tmp/memcached.log 2>&1 || true
+
+echo ""
+echo ".................................................................."
+echo "Finished tests ..................................................."
+echo ".................................................................."
+echo ""

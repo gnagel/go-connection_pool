@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Constants to use durring testing
+REDIS_PID="$PWD/tmp/redis.pid"
+
+# Abort on errors after this point ...
+set -e
+
+# Make the tmp folder, we will need it
+mkdir -p ./tmp
+
+# Kill the redis server if necessary
+if [ -e $REDIS_PID ]; then
+	pid=`cat $REDIS_PID`
+	echo "Killing redis pid=$pid"
+
+	kill $pid > /dev/null
+	rm -f $REDIS_PID
+
+	echo "Killed redis pid=$pid"
+fi

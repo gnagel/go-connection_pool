@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Constants to use durring testing
+MEMCACHED_HOST="127.0.0.1"
+MEMCACHED_PORT="11299" # Default is 11211
+MEMCACHED_PID="$PWD/tmp/memcached.pid"
+
+# Abort on errors after this point ...
+set -e
+
+# Make the tmp folder, we will need it
+mkdir -p ./tmp
+
+# Start the memcached server
+echo $$ > $MEMCACHED_PID
+exec memcached -p $MEMCACHED_PORT -l $MEMCACHED_HOST -vvv

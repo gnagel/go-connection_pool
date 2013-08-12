@@ -1,0 +1,25 @@
+#!/bin/sh
+
+export GOPATH=$PWD/
+
+# Constants to use durring testing
+REDIS_HOST="127.0.0.1"
+REDIS_PORT="6399" # Default is 6379
+REDIS_PID="./tmp/redis.pid"
+REDIS_LOG="./tmp/redis.log"
+REDIS_RDB="./tmp/redis.rdb"
+
+# Abort on errors after this point ...
+set -e
+
+# Make the tmp folder, we will need it
+mkdir -p ./tmp
+
+# Start the redis server
+echo $$ > $REDIS_PID
+exec redis-server \
+	--bind $REDIS_HOST \
+	--port $REDIS_PORT \
+	--dbfilename $REDIS_RDB \
+	--logfile $REDIS_LOG \
+	--loglevel debug

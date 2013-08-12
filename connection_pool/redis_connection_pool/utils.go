@@ -17,9 +17,9 @@ func loopStrings(values []string) func() string {
 //
 // Lazily make a Redis Connection
 //
-func makeLazyConnection(url string, Logger *log4go.Logger) (*RedisConnection, error) {
+func makeLazyConnection(url string, logger *log4go.Logger) (*RedisConnection, error) {
 	// Create a new factory instance
-	p := &RedisConnection{Url: url, Logger: Logger}
+	p := &RedisConnection{Url: url, Logger: logger}
 
 	// Return the factory
 	return p, nil
@@ -28,14 +28,14 @@ func makeLazyConnection(url string, Logger *log4go.Logger) (*RedisConnection, er
 //
 // Agressively make a Redis Connection
 //
-func makeAgressiveConnection(url string, Logger *log4go.Logger) (*RedisConnection, error) {
+func makeAgressiveConnection(url string, logger *log4go.Logger) (*RedisConnection, error) {
 	// Create a new factory instance
-	p := newLazyFactory(url, logger)
+	p, _ := makeLazyConnection(url, logger)
 
 	// Ping the server
 	if err := p.Ping(); nil != err {
 		// Close the connection
-		p.Close()
+		p.Close(err)
 
 		// Return the error
 		return nil, err

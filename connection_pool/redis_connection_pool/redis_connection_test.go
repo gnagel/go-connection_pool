@@ -5,7 +5,7 @@ import "testing"
 import "github.com/alecthomas/log4go"
 
 var redis_master = os.Getenv("REDIS_MASTER")
-var redis_connection_logger = log4go.NewDefaultLogger(log4go.FINEST)
+var redis_connection_logger = log4go.NewDefaultLogger(log4go.ERROR)
 
 const method_expected_a_equal_b_from_url = "[%s][%s] Expected '%v', Actual '%v'"
 
@@ -16,12 +16,12 @@ func Test_RedisConnection_NewConnection_IsNotOpen(t *testing.T) {
 	tag := "[RedisConnection][NewConnection IsNotOpen] Actual = %#v, Expected %#v"
 
 	// Create a connection, but don't actually connect to redis yet ...
-	connection := RedisConnection{Url: "127.0.0.1:6999", logger: &redis_connection_logger}
-	defer connection.Close()
+	connection := RedisConnection{Url: "127.0.0.1:6999", Logger: &redis_connection_logger}
+	defer connection.Close(nil)
 
-	// We shouldn't be connected yet
-	if ok := connection.IsOpen(); !ok {
-		t.Errorf(tag, ok, false)
+	// We shouldn't be connected
+	if closed := connection.IsClosed(); closed != true {
+		t.Errorf(tag, closed, true)
 		return
 	}
 }
@@ -33,8 +33,8 @@ func Test_RedisConnection_BadConnection_HasErrors(t *testing.T) {
 	tag := "[RedisConnection][BadConnection HasErrors] Actual = %#v, Expected %#v"
 
 	// Create a connection, but don't actually connect to redis yet ...
-	connection := RedisConnection{Url: "127.0.0.1:6999", logger: &redis_connection_logger}
-	defer connection.Close()
+	connection := RedisConnection{Url: "127.0.0.1:6999", Logger: &redis_connection_logger}
+	defer connection.Close(nil)
 
 	// Expected to fail
 	if err := connection.Open(); nil == err {
@@ -42,9 +42,9 @@ func Test_RedisConnection_BadConnection_HasErrors(t *testing.T) {
 		return
 	}
 
-	// We shouldn't be connected yet
-	if ok := connection.IsOpen(); !ok {
-		t.Errorf(tag, ok, false)
+	// We shouldn't be connected
+	if closed := connection.IsClosed(); closed != true {
+		t.Errorf(tag, closed, true)
 		return
 	}
 }
@@ -56,8 +56,8 @@ func Test_RedisConnection_GoodConnection_NoErrors(t *testing.T) {
 	tag := "[RedisConnection][BadConnection HasErrors] Actual = %#v, Expected %#v"
 
 	// Connect to the actual redis server
-	connection := RedisConnection{Url: os.Getenv("REDIS_MASTER"), logger: &redis_connection_logger}
-	defer connection.Close()
+	connection := RedisConnection{Url: os.Getenv("REDIS_MASTER"), Logger: &redis_connection_logger}
+	defer connection.Close(nil)
 
 	// Expected to succeed
 	if err := connection.Open(); nil != err {
@@ -66,8 +66,8 @@ func Test_RedisConnection_GoodConnection_NoErrors(t *testing.T) {
 	}
 
 	// We should be connected now
-	if ok := connection.IsOpen(); ok {
-		t.Errorf(tag, ok, true)
+	if open := connection.IsOpen(); open != true {
+		t.Errorf(tag, open, true)
 		return
 	}
 
@@ -85,8 +85,8 @@ func Test_RedisConnection_Client_AutomaticallyReconnects(t *testing.T) {
 	tag := "[RedisConnection]['Client' Reconnects to Redis] Actual = %#v, Expected %#v"
 
 	// Connect to the actual redis server
-	connection := RedisConnection{Url: os.Getenv("REDIS_MASTER"), logger: &redis_connection_logger}
-	defer connection.Close()
+	connection := RedisConnection{Url: os.Getenv("REDIS_MASTER"), Logger: &redis_connection_logger}
+	defer connection.Close(nil)
 
 	// Expected to succeed
 	if err := connection.Open(); nil != err {
@@ -95,15 +95,17 @@ func Test_RedisConnection_Client_AutomaticallyReconnects(t *testing.T) {
 	}
 
 	// We should be connected now
-	if ok := connection.IsOpen(); ok {
+	if ok := connection.IsOpen(); !ok {
 		t.Errorf(tag, ok, true)
 		return
 	}
 
 	// Disconnect from Redis
-	connection.Close()
-	if ok := connection.IsOpen(); !ok {
-		t.Errorf(tag, ok, false)
+	connection.Close(nil)
+
+	// We shouldn't be connected
+	if closed := connection.IsClosed(); closed != true {
+		t.Errorf(tag, closed, true)
 		return
 	}
 
@@ -114,8 +116,8 @@ func Test_RedisConnection_Client_AutomaticallyReconnects(t *testing.T) {
 	}
 
 	// We should be connected again
-	if ok := connection.IsOpen(); ok {
-		t.Errorf(tag, ok, true)
+	if open := connection.IsOpen(); open != true {
+		t.Errorf(tag, open, true)
 		return
 	}
 }

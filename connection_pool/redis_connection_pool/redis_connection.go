@@ -96,6 +96,13 @@ func (p *RedisConnection) IsOpen() bool {
 }
 
 //
+// Return true if the client connection exists
+//
+func (p *RedisConnection) IsClosed() bool {
+	return !p.IsOpen()
+}
+
+//
 // Open a new connection to redis
 //
 func (p *RedisConnection) Open() (err error) {
@@ -107,9 +114,9 @@ func (p *RedisConnection) Open() (err error) {
 		// Clear the connection pointer
 		p.client = nil
 
-		p.Logger.Critical(log_open_failed, p.Url, err)
+		p.Logger.Error(log_open_failed, p.Url, err)
 	} else {
-		p.Logger.Info(log_open_success, p.Url)
+		p.Logger.Trace(log_open_success, p.Url)
 	}
 
 	return
@@ -120,7 +127,7 @@ func (p *RedisConnection) Open() (err error) {
 //
 func (p *RedisConnection) Close(err error) {
 	// Log the event
-	p.Logger.Warn(log_closed, p.Url, err)
+	p.Logger.Debug(log_closed, p.Url, err)
 
 	// Close the connection
 	if nil != p.client {

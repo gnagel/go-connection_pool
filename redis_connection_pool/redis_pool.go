@@ -7,7 +7,7 @@ package redis_connection_pool
 import "fmt"
 import "errors"
 import "github.com/alecthomas/log4go"
-import cp "../../connection_pool"
+import cp "../connection_pool"
 
 //
 // What mode are we building the connection pool in?
